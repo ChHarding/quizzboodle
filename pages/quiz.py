@@ -6,9 +6,13 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import db
+import logger
+
+_user = st.session_state.get("user_name", "?")
 
 # Check if game was reset by admin (state flipped back to WAITING)
 if not db.check_game_started():
+    logger.warning(_user, "quiz.py: game_started=False detected -> resetting session and returning to app.py")
     st.session_state.in_lobby = False
     st.session_state.was_in_lobby_before_start = False
     st.switch_page("app.py")
@@ -34,6 +38,9 @@ st.markdown("""
 # Start timer when question loads
 if st.session_state.timer_start is None:
     st.session_state.timer_start = time.time()
+    q_num = st.session_state.current_question + 1
+    q_total = len(st.session_state.questions)
+    logger.info(_user, f"quiz.py: question {q_num}/{q_total} timer started")
 
 # Get current question
 question_data = st.session_state.questions[st.session_state.current_question]
@@ -85,6 +92,7 @@ timer_expired = remaining_time <= 0
 
 # If timer expired and no result shown yet, start showing result
 if timer_expired and not st.session_state.show_result:
+    logger.debug(_user, f"quiz.py: timer expired for Q{st.session_state.current_question + 1}, selected_answer={st.session_state.selected_answer}")
     st.session_state.show_result = True
     st.session_state.result_start_time = time.time()
 
@@ -97,6 +105,7 @@ for i, ans_text in enumerate(answer_options):
         
         if st.button(ans_text, key=f"answer_{i}", use_container_width=True, disabled=timer_expired, type=button_type):
             if not timer_expired:
+                logger.info(_user, f"quiz.py: selected answer index {i} ('{ans_text}') for Q{st.session_state.current_question + 1}")
                 st.session_state.selected_answer = i
 
 # Create a placeholder for result message
@@ -131,6 +140,7 @@ if st.session_state.show_result:
         # Move to next question automatically
         if st.session_state.current_question < len(st.session_state.questions) - 1:
             # Reset all state for next question
+            logger.info(_user, f"quiz.py: advancing from Q{st.session_state.current_question + 1} to Q{st.session_state.current_question + 2}")
             st.session_state.current_question += 1
             st.session_state.selected_answer = None
             st.session_state.show_result = False
@@ -139,6 +149,7 @@ if st.session_state.show_result:
             st.rerun()
         else:
             # Quiz complete - go to results page
+            logger.info(_user, f"quiz.py: all questions done, score={st.session_state.correct_count}/{len(st.session_state.questions)} -> results.py")
             st.switch_page("pages/results.py")
 
 # Auto-refresh during countdown

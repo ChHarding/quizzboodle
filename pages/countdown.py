@@ -4,9 +4,14 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import db
+import logger
+
+_user = st.session_state.get("user_name", "?")
+logger.debug(_user, "countdown.py: page load")
 
 # Check if game was reset by admin (state flipped back to WAITING)
 if not db.check_game_started():
+    logger.warning(_user, "countdown.py: game_started=False detected -> resetting session and returning to app.py")
     st.session_state.in_lobby = False
     st.session_state.was_in_lobby_before_start = False
     st.switch_page("app.py")
@@ -27,6 +32,7 @@ st.markdown("""
 # Initialize countdown
 if 'countdown_start_time' not in st.session_state or st.session_state.countdown_start_time is None:
     st.session_state.countdown_start_time = time.time()
+    logger.info(_user, "countdown.py: countdown timer initialised")
 
 countdown_elapsed = time.time() - st.session_state.countdown_start_time
 countdown_remaining = max(0, 5 - countdown_elapsed)
@@ -53,5 +59,6 @@ if countdown_remaining > 0:
     st.rerun()
 else:
     # Countdown complete, reset timer and start quiz
+    logger.info(_user, "countdown.py: countdown complete -> switching to quiz.py")
     st.session_state.countdown_start_time = None
     st.switch_page("pages/quiz.py")

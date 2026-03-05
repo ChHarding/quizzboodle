@@ -1,5 +1,6 @@
 import streamlit as st
 import db
+import logger
 
 # Custom CSS to style primary buttons as green
 st.markdown("""
@@ -44,10 +45,13 @@ if 'questions' not in st.session_state:
 
 # Route returning admin back to admin room
 if st.session_state.is_admin:
+    logger.debug("admin", "app.py: returning admin -> pages/admin.py")
     st.switch_page("pages/admin.py")
 
 # Route returning player back to lobby
 if st.session_state.in_lobby:
+    user = st.session_state.user_name or "?"
+    logger.debug(user, "app.py: returning player to lobby -> pages/lobby.py")
     st.switch_page("pages/lobby.py")
 
 # Landing Page - Name Entry
@@ -69,8 +73,16 @@ with col2:
         st.session_state.user_name = name.strip()
         if st.session_state.user_name.lower() == "admin":
             st.session_state.is_admin = True
+            logger.info("admin", "app.py: admin joined -> switching to pages/admin.py")
             st.switch_page("pages/admin.py")
         else:
-            db.add_player_to_lobby(st.session_state.user_name)
-            st.session_state.in_lobby = True
-            st.rerun()
+            existing = db.read_lobby_players()
+            if st.session_state.user_name in existing:
+                logger.warning(st.session_state.user_name, "app.py: duplicate name rejected — already in lobby")
+                st.warning(f"⚠️ The name **{st.session_state.user_name}** is already taken in the lobby. Please choose a different name.")
+                st.session_state.user_name = ""
+            else:
+                logger.info(st.session_state.user_name, "app.py: player joined, calling add_player_to_lobby")
+                db.add_player_to_lobby(st.session_state.user_name)
+                st.session_state.in_lobby = True
+                st.rerun()
