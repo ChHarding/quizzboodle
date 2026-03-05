@@ -1,0 +1,21 @@
+{
+  "display_time": 5,
+  "wait_before_next": 3,
+  "questions": [
+    {
+      "question": "what is blue",
+      "answers": [
+        {
+          "text": "an elephant",
+          "image": "images/placeholder.png"
+        },
+        {
+          "text": "an ant",
+          "image": "images/placeholder.png"
+        }
+      ],
+      "correct_answer_index": 0,
+      "question_image": "images/placeholder.png"
+    }
+  ]
+}
