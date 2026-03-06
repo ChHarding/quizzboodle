@@ -2,6 +2,13 @@ import streamlit as st
 import db
 import logger
 
+# Run once per server process — seeds Supabase with the bundled quiz if empty
+@st.cache_resource
+def _ensure_quiz_seeded():
+    db.ensure_quiz_seeded()
+
+_ensure_quiz_seeded()
+
 # Custom CSS to style primary buttons as green
 st.markdown("""
     <style>

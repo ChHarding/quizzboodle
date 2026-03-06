@@ -166,6 +166,43 @@ def read_all_scores() -> list[dict]:
 
 # ── Quiz data ──────────────────────────────────────────────────────────────────
 
+def ensure_quiz_seeded() -> None:
+    """
+    Called once at server startup.  If the quiz_config table has no row yet,
+    seed it from the local quiz_data.json so the app never starts data-less.
+    Does nothing if Supabase already has a quiz loaded.
+    """
+    try:
+        result = (
+            get_client()
+            .table("quiz_config")
+            .select("data")
+            .eq("id", 1)
+            .execute()
+        )
+        if result.data and result.data[0]["data"].get("questions"):
+            logger.info("system", "ensure_quiz_seeded: quiz already present, nothing to do")
+            return
+    except Exception as e:
+        logger.error("system", f"ensure_quiz_seeded: could not check quiz_config: {e}")
+        return
+
+    # No quiz in Supabase yet — try seeding from the bundled local file
+    local_path = os.path.join(os.path.dirname(__file__), "quiz_data.json")
+    if not os.path.exists(local_path):
+        logger.warning("system", "ensure_quiz_seeded: no local quiz_data.json found, skipping seed")
+        return
+    try:
+        with open(local_path, "r") as fh:
+            data = json.load(fh)
+        data["_quiz_filename"] = "quiz_data.json (auto-seeded)"
+        save_quiz_data(data)
+        logger.info("system", f"ensure_quiz_seeded: seeded from quiz_data.json "
+                              f"({len(data.get('questions', []))} questions)")
+    except Exception as e:
+        logger.error("system", f"ensure_quiz_seeded: seed failed: {e}")
+
+
 def load_quiz_data() -> dict:
     """
     Try quiz_config table first (set via admin upload).
