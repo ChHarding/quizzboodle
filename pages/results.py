@@ -31,6 +31,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# Guard: if core quiz state is missing, this is a stale/direct-navigation session
+if 'correct_count' not in st.session_state or 'questions' not in st.session_state:
+    logger.warning(_user, "results.py: correct_count or questions missing from session state — redirecting to app.py")
+    st.switch_page("app.py")
+
 # Save current player's score (only once)
 if 'score_saved' not in st.session_state:
     logger.info(_user, f"results.py: saving score {st.session_state.correct_count}/{len(st.session_state.questions)}")
