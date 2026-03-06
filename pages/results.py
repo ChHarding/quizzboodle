@@ -85,10 +85,16 @@ with col2:
     st.markdown("<br>", unsafe_allow_html=True)
     
     if st.button("Back to Login", use_container_width=True, type="primary"):
-        logger.info(_user, "results.py: Back to Login clicked -> clearing session state only (admin resets game)")
-        # Reset only this player's session state — do NOT call reset_everything().
-        # The admin's 'End Game & Reset' button is the authoritative reset so that
-        # one player finishing early cannot wipe the game for everyone else.
+        logger.info(_user, "results.py: Back to Login clicked -> removing from lobby, clearing session state")
+        # Remove this player from the lobby.
+        # If the lobby is now empty (all players done), auto-reset game state to
+        # WAITING so the next game can start without admin intervention.
+        db.remove_player_from_lobby(st.session_state.user_name)
+        remaining = db.read_lobby_players()
+        if not remaining:
+            logger.info(_user, "results.py: lobby empty after player left -> auto-resetting game state to WAITING")
+            db.reset_everything()
+        # Reset only this player's session state
         st.session_state.current_question = 0
         st.session_state.selected_answer = None
         st.session_state.show_result = False

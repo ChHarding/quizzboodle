@@ -1,4 +1,5 @@
 streamlit
 supabase
+requests
 Pillow
 tkinterdnd2

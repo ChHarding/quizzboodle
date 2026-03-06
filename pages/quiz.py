@@ -8,6 +8,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import db
 import logger
 
+
+def _load_image(src: str):
+    """Return src unchanged if it is a URL (Streamlit handles it natively);
+    otherwise open from disk with PIL for local dev."""
+    if src.startswith("http://") or src.startswith("https://"):
+        return src
+    return Image.open(src)
+
 _user = st.session_state.get("user_name", "?")
 
 # Check if game was reset by admin (state flipped back to WAITING)
@@ -67,7 +75,7 @@ if question_data.get("question_image"):
         st.title("Question")
         st.subheader(question_data["question"])
     with col2:
-        st.image(Image.open(question_data["question_image"]), width=300)
+        st.image(_load_image(question_data["question_image"]), width=300)
 else:
     st.title("Question")
     st.subheader(question_data["question"])
@@ -85,7 +93,7 @@ if has_images:
     for i, ans in enumerate(question_data["answers"]):
         with image_cols[i]:
             if ans.get("image"):
-                st.image(Image.open(ans["image"]), width="stretch")
+                st.image(_load_image(ans["image"]), width="stretch")
 
 # Check if timer has expired
 timer_expired = remaining_time <= 0

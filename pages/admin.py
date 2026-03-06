@@ -106,7 +106,11 @@ with col2:
     st.markdown("<h4>📂 Upload Quiz File</h4>", unsafe_allow_html=True)
     st.markdown("<p style='color: gray; font-size: 14px;'>Upload a <code>.json</code> file produced by the "
                 "Quiz Creator app. It will replace the active quiz immediately.</p>", unsafe_allow_html=True)
-
+    active_quiz = db.get_quiz_filename()
+    if active_quiz:
+        st.markdown(f"📌 **Active quiz:** `{active_quiz}`")
+    else:
+        st.markdown("📌 **Active quiz:** *none loaded yet*")
     uploaded = st.file_uploader("Choose a quiz JSON file", type=["json"], key="quiz_upload")
     if uploaded is not None:
         # Guard against re-processing the same file on every 3-second rerun.
@@ -121,6 +125,10 @@ with col2:
                 if "questions" not in data or "display_time" not in data:
                     st.error("Invalid quiz file — must contain 'questions' and 'display_time'.")
                 else:
+                    # Upload any local images to Supabase Storage and rewrite paths -> URLs
+                    with st.spinner("Uploading images to Supabase Storage…"):
+                        data = db.upload_quiz_images(data)
+                    data["_quiz_filename"] = uploaded.name
                     ok = db.save_quiz_data(data)
                     if ok:
                         st.session_state["_last_upload_id"] = upload_id
@@ -150,6 +158,65 @@ with col2:
         if "was_in_lobby_before_start" in st.session_state:
             del st.session_state["was_in_lobby_before_start"]
         st.switch_page("app.py")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    # ── Supabase Usage (fragment keeps it stable during 3-s page reruns) ─────
+    @st.fragment
+    def _usage_panel():
+        st.markdown("<h4>📊 Supabase Usage</h4>", unsafe_allow_html=True)
+        with st.expander("Check database usage", expanded=False):
+            if st.button("🔍 Fetch Usage Stats", key="btn_usage"):
+                with st.spinner("Querying Supabase Management API..."):
+                    result = db.get_db_usage()
+                st.session_state["_admin_usage"] = result
+                st.session_state["_admin_usage_ok"] = result is not None
+
+            usage = st.session_state.get("_admin_usage")
+
+            if st.session_state.get("_admin_usage_ok") is False:
+                st.warning(
+                    "Could not fetch usage stats. Make sure you have added "
+                    "`management_token` and `project_ref` to `.streamlit/secrets.toml`:\n\n"
+                    "```toml\n[supabase]\nmanagement_token = \"sbp_...\"  "
+                    "# from supabase.com/dashboard/account/tokens\n"
+                    "project_ref = \"abcdefghijklmnopqrst\"  "
+                    "# 20-char ref in your project URL\n```"
+                )
+            elif usage is not None:
+                def _bar(label, used, limit, unit):
+                    pct = min(used / limit, 1.0)
+                    colour = "🟢" if pct < 0.7 else "🟡" if pct < 0.9 else "🔴"
+                    st.markdown(f"{colour} **{label}:** `{used:.1f} {unit}` of `{limit} {unit}` "
+                                f"({pct*100:.1f}%)")
+                    st.progress(pct)
+
+                # ── Database size (limit: 500 MB) ────────────────────────────
+                used_db_mb = usage["db_size_bytes"] / (1024 * 1024)
+                _bar("Database size", used_db_mb, 500, "MB")
+
+                # ── Storage size (limit: 1 GB) ────────────────────────────────
+                used_storage_mb = usage["storage_bytes"] / (1024 * 1024)
+                _bar("Storage", used_storage_mb, 1024, "MB")
+
+                # ── Auth users (limit: 50,000 MAU) ────────────────────────────
+                _bar("Auth users (total)", usage["auth_users"], 50_000, "users")
+
+                # ── Bandwidth note (not queryable) ────────────────────────────
+                st.markdown("ℹ️ **Bandwidth (egress):** limit 5 GB/month — "
+                            "not available via the database API. "
+                            "Check your [Supabase dashboard](https://supabase.com/dashboard) for live usage.")
+
+                # ── Table breakdown ───────────────────────────────────────────
+                st.markdown("---")
+                st.markdown("**Table breakdown:**")
+                for t in usage["tables"]:
+                    st.markdown(
+                        f"- `{t['table_name']}`: {int(t['row_count']):,} rows — {t['total_size']}"
+                    )
+
+    _usage_panel()
 
     st.markdown("<br>", unsafe_allow_html=True)
 
