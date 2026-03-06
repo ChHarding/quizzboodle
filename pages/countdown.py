@@ -26,6 +26,9 @@ st.markdown("""
         background-color: #28a745;
         border-color: #28a745;
     }
+    [data-testid="stSidebarNav"] { display: none; }
+    [data-testid="collapsedControl"] { display: none; }
+    section[data-testid="stSidebar"] { display: none; }
     </style>
     """, unsafe_allow_html=True)
 

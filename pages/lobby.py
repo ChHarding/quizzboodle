@@ -17,6 +17,9 @@ st.markdown("""
         background-color: #218838;
         border-color: #1e7e34;
     }
+    [data-testid="stSidebarNav"] { display: none; }
+    [data-testid="collapsedControl"] { display: none; }
+    section[data-testid="stSidebar"] { display: none; }
     </style>
     """, unsafe_allow_html=True)
 
